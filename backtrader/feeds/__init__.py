@@ -47,6 +47,12 @@ try:
 except ImportError:
     pass  # The user may not have something installed
 
+try:
+    from .gdax import GDAXData
+except ImportError:
+    pass  # The user may not have something installed
+
+from .kraken import KrakenData
 
 from .vchartfile import VChartFile
 

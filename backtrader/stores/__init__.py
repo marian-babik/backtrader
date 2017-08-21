@@ -39,5 +39,10 @@ try:
 except ImportError:
     pass  # The user may not have a module installed
 
+try:
+    from .gdaxstore import GDAXStore
+except ImportError:
+    pass  # The user may not have a module installed
 
+from .krakenstore import KrakenStore
 from .vchartfile import VChartFile
