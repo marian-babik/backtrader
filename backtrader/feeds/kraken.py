@@ -92,6 +92,7 @@ class KrakenData(with_metaclass(MetaKrakenData, DataBase)):
         ('ask', False),
         ('bid', True),
         ('price', False),
+        ('live_wcandles', False),
         ('reconnect', True),
         ('reconnections', -1),  # forever
         ('reconntimeout', 2.0),
@@ -168,7 +169,8 @@ class KrakenData(with_metaclass(MetaKrakenData, DataBase)):
             self._state = self._ST_HISTORBACK
             return True
 
-        self.qlive = self.o.streaming_prices(self.p.dataname, tmout=self.p.reconntimeout)
+        self.qlive = self.o.streaming_prices(self.p.dataname, tmout=self.p.reconntimeout,
+                                             compression=self._compression, candles=self.p.live_wcandles)
         if instart:
             self._statelivereconn = self.p.backfill_start
         else:
@@ -267,7 +269,10 @@ class KrakenData(with_metaclass(MetaKrakenData, DataBase)):
                     # passing None to fetch max possible in 1 request
                     dtbegin = None
 
-                dtend = datetime.utcfromtimestamp(msg['time'])
+                if self.p.live_wcandles:
+                    dtend = datetime.utcfromtimestamp(msg[0])
+                else:
+                    dtend = datetime.utcfromtimestamp(msg['time'])
 
                 self.qhist = self.o.candles(self.p.dataname, dtbegin, dtend,
                                             self._timeframe, self._compression)
@@ -327,6 +332,8 @@ class KrakenData(with_metaclass(MetaKrakenData, DataBase)):
                     return False
 
     def _load_tick(self, msg):
+        if self.p.live_wcandles:
+            return self._load_history(msg)
         dtobj = datetime.utcfromtimestamp(msg['time'])
         dt = date2num(dtobj)
         if dt <= self.lines.datetime[-1]:

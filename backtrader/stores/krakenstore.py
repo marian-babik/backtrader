@@ -252,13 +252,47 @@ class KrakenStore(with_metaclass(MetaSingleton, object)):
 
         q.put({})  # end of transmission
 
-    def streaming_prices(self, dataname, tmout=2.0):
+    def streaming_prices(self, dataname, tmout=2.0, compression=None, candles=False):
         q = queue.Queue()
-        kwargs = {'q': q, 'dataname': dataname, 'tmout': tmout}
-        t = threading.Thread(target=self._t_streaming_prices, kwargs=kwargs)
+        kwargs = {'q': q, 'dataname': dataname, 'tmout': tmout, 'compression': compression}
+        if not candles:
+            t = threading.Thread(target=self._t_streaming_prices, kwargs=kwargs)
+        else:
+            t = threading.Thread(target=self._t_streaming_candles, kwargs=kwargs)
         t.daemon = True
         t.start()
         return q
+
+    def _t_streaming_candles(self, dataname, q, tmout=2.0, compression=1):
+        ts_start = int(_time.time()) - (60 * compression)
+        while True:
+            try:
+                response, error = self.kraken.request("/0/public/OHLC", pair=dataname, since=ts_start,
+                                                          interval=compression)
+                if error:
+                    err = dict(code=2, message=error, description="KRAKEN error")
+                    q.put(err)
+                    return
+                if dataname not in response['result'].keys():
+                    err = dict(code=1, message="OHLC for {0} not found" % dataname, description="Pair error")
+                    q.put(err)
+                    return
+                ts_start = int(response['result']['last'])
+                for candle in response['result'][dataname][:-1]:
+                    self.log('ticker', candle)
+                    q.put(candle)
+                _time.sleep(tmout)
+            except (requests.exceptions.ConnectionError, requests.exceptions.ConnectTimeout) as e:
+                self.log(str(e))
+                err = dict(code=3, message=str(e), description="Connection error")
+                q.put(err)
+                break
+            except Exception as e:
+                err = dict(code=1, message=str(e), description="Exception caught")
+                self.log(str(e))
+                q.put(err)
+                q.put(None)
+                break
 
     def _t_streaming_prices(self, dataname, q, tmout=2.0):
         if tmout is not None:
