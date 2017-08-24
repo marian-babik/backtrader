@@ -236,7 +236,7 @@ class KrakenStore(with_metaclass(MetaSingleton, object)):
                 err = dict(code=1, message="OHLC for {0} not found" % dataname, description="Pair error")
                 q.put(err)
                 return
-            for candle in response['result'][dataname]:
+            for candle in response['result'][dataname][:-1]:
                 q.put(candle)
         except (requests.exceptions.ConnectionError, requests.exceptions.ConnectTimeout) as e:
                 self.log(str(e))
