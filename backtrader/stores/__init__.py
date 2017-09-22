@@ -44,5 +44,6 @@ try:
 except ImportError:
     pass  # The user may not have a module installed
 
+from .pnxstore import PNXStore
 from .krakenstore import KrakenStore
 from .vchartfile import VChartFile

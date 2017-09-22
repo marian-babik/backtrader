@@ -52,6 +52,7 @@ try:
 except ImportError:
     pass  # The user may not have something installed
 
+from .pnx import PNXData
 from .kraken import KrakenData
 
 from .vchartfile import VChartFile
