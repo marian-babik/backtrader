@@ -46,4 +46,5 @@ except ImportError:
 
 from .pnxstore import PNXStore
 from .krakenstore import KrakenStore
+from .ccstore import CCStore
 from .vchartfile import VChartFile

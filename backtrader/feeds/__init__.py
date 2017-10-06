@@ -54,6 +54,7 @@ except ImportError:
 
 from .pnx import PNXData
 from .kraken import KrakenData
+from .cc import CCData
 
 from .vchartfile import VChartFile
 
