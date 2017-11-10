@@ -169,7 +169,7 @@ class CCStore(with_metaclass(MetaSingleton, object)):
         return q
 
     def _t_candles(self, dataname, dtbegin, dtend, timeframe, compression, q, timeout=10, exchange="BitTrex"):
-        limit = 2000
+        limit = 500
         aggregate = compression
         if not self.get_granularity(timeframe, compression):
             q.put(dict(code=2, msg="Unsupported time frame"))
@@ -181,12 +181,12 @@ class CCStore(with_metaclass(MetaSingleton, object)):
         if timeframe == bt.TimeFrame.Days:
             compression = 86400 * compression
         elif timeframe == bt.TimeFrame.Minutes:
-            compression = 3600 * compression
+            compression = 60 * compression
 
         if dtbegin:
             ts_start = int((dtbegin - self._DTEPOCH).total_seconds())
         else:
-            ts_start = int(_time.time()) - (compression * 2000)
+            ts_start = int(_time.time()) - (compression * 500)
 
         if dtend:
             ts_end = int((dtend - self._DTEPOCH).total_seconds())
@@ -225,18 +225,18 @@ class CCStore(with_metaclass(MetaSingleton, object)):
                 self.log(dataname, dt_start, dt_end, compression)
                 if timeframe == bt.TimeFrame.Days:
                     response = self.cc.request("/data/histoday", fsym=fsym, tsym=tsym, tryConversion=False,
-                                               aggregate=aggregate, limit=limit, toTs=ts_end, e=exchange)
+                                               aggregate=aggregate, limit=limit, toTs=dt_end, e=exchange)
                 if timeframe == bt.TimeFrame.Minutes:
                     response = self.cc.request("/data/histohour", fsym=fsym, tsym=tsym, tryConversion=False,
-                                               aggregate=aggregate, limit=limit, toTs=ts_end, e=exchange)
-            if not response or "Data" not in response.keys():
-                err = dict(code=1, message="OHLC for {0} not found" % dataname, description="Pair error")
-                q.put(err)
-                return
-            for candle in response["Data"]:
-                q.put(candle)
-            if len(dt_slices) > 1:
-                _time.sleep(timeout)  # throttling needed as CC imposes 1req/10s max
+                                               aggregate=int(aggregate/60), limit=limit, toTs=dt_end, e=exchange)
+                if not response or "Data" not in response.keys():
+                    err = dict(code=1, message="OHLC for {0} not found" % dataname, description="Pair error")
+                    q.put(err)
+                    return
+                for candle in response["Data"]:
+                    q.put(candle)
+                if len(dt_slices) > 1:
+                    _time.sleep(timeout)  # throttling needed as CC imposes 1req/10s max
         except (requests.exceptions.ConnectionError, requests.exceptions.ConnectTimeout) as e:
                 self.log(str(e))
                 err = dict(code=3, message=str(e), description="Connection error")
